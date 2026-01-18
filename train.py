@@ -7,11 +7,11 @@ import torch
 import torch.backends.cudnn as cudnn
 from networks.vit_seg_modeling import VisionTransformer as ViT_seg
 from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
-from trainer import trainer_lc,trainer_lc_fusion
+from trainer import trainer_lc_fusion
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str,
-                    default='/home/xinh1/junhao/MM-EndoCL', help='root dir for data')
+                    default='.../MM-EndoCL', help='root dir for data')
 parser.add_argument('--dataset', type=str,
                     default='LC_fusion_dataset2', help='experiment_name')
 parser.add_argument('--num_classes', type=int,
@@ -27,11 +27,11 @@ parser.add_argument('--base_lr', type=float,  default=0.01,
 parser.add_argument('--img_size', type=int,
                     default=224, help='input patch size of network input')
 parser.add_argument('--seed', type=int,
-                    default=1234, help='random seed')
+                    default=1234, help='random seed, default is 1234, others can be 42,3407')
 parser.add_argument('--n_skip', type=int,
                     default=3, help='using number of skip-connect, default is num')
 parser.add_argument('--vit_name', type=str,
-                    default='R50-ViT-B_16', help='select one vit model')
+                    default='R50-ViT-B_16', help='select one vit model R50-ViT-B_16')
 parser.add_argument('--vit_patches_size', type=int,
                     default=16, help='vit_patches_size, default is 16')
 args = parser.parse_args()
@@ -50,12 +50,8 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     dataset_name = args.dataset
-    model_name = "LC_fusion" if "fusion" in dataset_name.lower() else "LC"
+    model_name = "LC_fusion" if "fusion" in dataset_name.lower()
     dataset_config = {
-        'LC_dataset1': {
-            'data_path': './data/dataset1',
-            'num_classes': 2,
-        },
         'LC_fusion_dataset1': {
             'data_path': './data/dataset1',
             'num_classes': 2,
@@ -72,7 +68,7 @@ if __name__ == "__main__":
     args.num_classes = dataset_config[dataset_name]['num_classes']
     args.data_path = dataset_config[dataset_name]['data_path']
     args.is_pretrain = True
-    snapshot_path = f"./log/{dataset_name}/epoch_{args.epochs}_bs_{args.batch_size}_lr_{args.base_lr}_s_{args.seed}_laplacian"
+    snapshot_path = f"./log/{dataset_name}/epoch_{args.epochs}_bs_{args.batch_size}_lr_{args.base_lr}_s_{args.seed}"
 
 
     if not os.path.exists(snapshot_path):
@@ -84,15 +80,11 @@ if __name__ == "__main__":
         config_vit.patches.grid = (int(args.img_size / args.vit_patches_size), int(args.img_size / args.vit_patches_size))
 
     
-    if model_name=='LC_fusion':
-        from networks.vit_seg_modeling_fusion import VisionTransformer as ViT_seg_fusion
-        net = ViT_seg_fusion(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
-        net.load_from(weights=np.load(config_vit.pretrained_path))
-        net.load_from1(weights=np.load(config_vit.pretrained_path))
-    else:
-        net = ViT_seg(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
-        net.load_from(weights=np.load(config_vit.pretrained_path))
+    from networks.vit_seg_modeling_fusion import VisionTransformer as ViT_seg_fusion
+    net = ViT_seg_fusion(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
+    net.load_from(weights=np.load(config_vit.pretrained_path))
+    net.load_from1(weights=np.load(config_vit.pretrained_path))
 
-    trainer = {'LC':trainer_lc,'LC_fusion':trainer_lc_fusion}
+    trainer = {'LC_fusion':trainer_lc_fusion}
 
     trainer[model_name](args, net, snapshot_path)

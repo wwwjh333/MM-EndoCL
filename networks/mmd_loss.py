@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class MMD_loss(nn.Module):
-    def __init__(self, kernel_type='laplacian', kernel_mul=2.0, kernel_num=5, fix_sigma=None):
+    def __init__(self, kernel_type='gaussian', kernel_mul=2.0, kernel_num=5, fix_sigma=None):
         """
         kernel_type: 'gaussian' | 'laplacian' | 'linear'
         kernel_num:  用于多核 Gaussian / Laplacian，linear 时会被忽略

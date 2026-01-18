@@ -2,21 +2,14 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-import networks.nystroemmhsic.estimators as estimators, networks.nystroemmhsic.data as data, \
-    networks.nystroemmhsic.kernels as kernels
-from networks.nystroemmhsic.helpers import g, est_sigma
 import copy
 import logging
 import math
-# from mixture_of_experts import MoE
 from os.path import join as pjoin
 from .NTXent import NTXent
 import torch
 import torch.nn as nn
 import numpy as np
-from .InfoNCE import InfoNCE
-from .HSIC import RBF, HSIC
-from .mi import MutualInformation
 from torch.nn import CrossEntropyLoss, Dropout, Softmax, Linear, Conv2d, LayerNorm
 from torch.nn.modules.utils import _pair
 from scipy import ndimage
@@ -525,11 +518,11 @@ class VisionTransformer(nn.Module):
         x, attn_weights, features,shallow_features = self.transformer(x)  # (B, n_patch, hidden)
         x1, attn_weights1, features1,shallow_features1 = self.transformer1(x1)
 
-        x_fusion,fd_loss,da_loss,x_specific,x1_specific,x_share,x1_share = self.fusion(x, x1,shallow_features,shallow_features1)
+        x_fusion,fd_loss,da_loss = self.fusion(x, x1,shallow_features,shallow_features1)
 
         x_fusion = self.decoder1(x_fusion, features)
         logits = self.segmentation_head1(x_fusion)
-        return logits,fd_loss, da_loss,x_specific,x1_specific,x_share,x1_share
+        return logits,fd_loss, da_loss
 
     def load_from1(self, weights):
         with torch.no_grad():
@@ -643,7 +636,6 @@ class Fusion(nn.Module):
     def __init__(self, config, vis):
         super(Fusion, self).__init__()
 
-        # self.cross_attn = Cross_Attention(config,vis)
 
         self.feature_extractor_1 = nn.Sequential(
             nn.Linear(768, 768),
@@ -690,6 +682,7 @@ class Fusion(nn.Module):
             nn.Linear(768, 768)
         )
 
+
         self.NTXent = NTXent()
         self.mmd = MMD_loss()
         
@@ -728,6 +721,7 @@ class Fusion(nn.Module):
 
         orth_loss_x = torch.mean(torch.nn.functional.cosine_similarity(x_specific, x_share, dim=-1) ** 2)
         orth_loss_x1 = torch.mean(torch.nn.functional.cosine_similarity(x1_specific, x1_share, dim=-1) ** 2)
+
         
         ntxent = self.NTXent(x_share.view(bs, -1), x1_share.view(bs, -1), x_specific.view(bs, -1),
                              x1_specific.view(bs, -1))
@@ -740,7 +734,7 @@ class Fusion(nn.Module):
 
         mi = (mi_max + mi_min+orth_loss_x+orth_loss_x1)/4
         fd_loss = mi + 0.01*ntxent
-        return x_fusion,fd_loss, da_loss,x_specific,x1_specific,x_share,x1_share
+        return x_fusion,fd_loss, da_loss
 
 class PositionAwareWeightedPooling(nn.Module):
     def __init__(self, feature_dim=768 * 3):

@@ -7,13 +7,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-from PIL import Image
+from PIL import Image, ImageFile
 import torchvision.transforms.functional as F
 import torchvision.transforms as transforms
 import pandas as pd
 from skimage.transform import rotate
 from torchvision.transforms.functional import InterpolationMode
 import random
+import math
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class LC(Dataset):
     def __init__(self, data_path, transform=None, mode='Training'):
@@ -43,6 +45,7 @@ class LC(Dataset):
 
         img_b = Image.open(img_b_path).convert('RGB')
         img_n = Image.open(img_n_path).convert('RGB')
+
         mask_b = Image.open(msk_path_b).convert('L')
         name = name_b.split('/')[-1].split(".png")[0]
 
@@ -52,6 +55,88 @@ class LC(Dataset):
         if self.transform:
             sample = self.transform(sample)
         return sample
+
+
+class GaussianNoise_lc(object):
+    def __init__(self, severity=0, modality="nbi", std_list=None, clip=True, seed=1234):
+        """
+        severity: int, e.g., s = 0..3
+        modality: 'nbi' or 'wli'
+        std_list: list of std values indexed by severity
+                  default is [0.0, 0.03, 0.06, 0.10]
+        clip: clamp to [0,1] after adding noise (assumes tensor in [0,1])
+        seed: optional int for reproducibility
+        """
+        self.severity = int(severity)
+        self.modality = modality
+        self.clip = bool(clip)
+        self.seed = seed
+
+        if std_list is None:
+            std_list = [0.0, 0.03, 0.06, 0.10]  # adjust if needed
+        self.std_list = std_list
+
+        if self.severity < 0 or self.severity >= len(self.std_list):
+            raise ValueError(f"severity={self.severity} out of range for std_list (len={len(self.std_list)})")
+        self.std = float(self.std_list[self.severity])
+
+    def __call__(self, sample):
+        if self.severity <= 0:
+            return sample
+
+        key = "image_n" if self.modality == "nbi" else "image_b"
+        x = sample[key]  # torch.Tensor [C,H,W]
+
+        # deterministic noise if seed provided
+        noise = torch.randn_like(x) * self.std
+
+        x = x + noise
+        if self.clip:
+            x = torch.clamp(x, 0.0, 1.0)
+
+        sample[key] = x
+        return sample
+
+
+class GaussianBlur_lc(object):
+    def __init__(self, severity=0, modality="nbi"):
+        """
+        severity: int, s = 0,1,2,3,4
+        modality: 'nbi' or 'wli'
+        """
+        self.severity = severity
+        self.modality = modality
+
+        # sigma = 0.5 * s
+        self.sigma = 3 * severity
+
+        if self.sigma > 0:
+            k = 2 * math.ceil(3 * self.sigma) + 1
+            self.kernel_size = min(k, 15)  # cap kernel size
+        else:
+            self.kernel_size = None
+
+    def __call__(self, sample):
+        if self.severity <= 0:
+            return sample
+
+        if self.modality == "nbi":
+            sample["image_n"] = F.gaussian_blur(
+                sample["image_n"],
+                kernel_size=[self.kernel_size, self.kernel_size],
+                sigma=[self.sigma, self.sigma]
+            )
+            sample["image_n"].save("nbi_blur.png")
+        elif self.modality == "wli":
+            sample["image_b"] = F.gaussian_blur(
+                sample["image_b"],
+                kernel_size=[self.kernel_size, self.kernel_size],
+                sigma=[self.sigma, self.sigma]
+            )
+            sample["image_b"].save("wli_blur.png")
+
+        return sample
+
 
 class Resize_lc(object):
     def __init__(self, img_size):
