@@ -31,7 +31,7 @@ import seaborn as sns
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str,
-                    default='Synapse', help='experiment_name')
+                    default='LC_fusion_dataset1', help='experiment_name')
 parser.add_argument('--num_classes', type=int,
                     default=2, help='output channel of network')
 parser.add_argument('--weight_path', type=str,
@@ -136,16 +136,8 @@ if __name__ == "__main__":
     torch.cuda.manual_seed(args.seed)
 
     dataset_config = {
-        'LC_fusion_dataset1': {
-            'data_path': './data/dataset1',
-            'num_classes': 2,
-        },
-        'LC_fusion_dataset2': {
-            'data_path': './data/dataset2',
-            'num_classes': 2,
-        },
-        'LC_fusion_dataset3': {
-            'data_path': './data/dataset3',
+        'demo_dataset': {
+            'data_path': './data/demo_dataset',
             'num_classes': 2,
         }
     }
@@ -153,7 +145,6 @@ if __name__ == "__main__":
     dataset_name = args.dataset
     args.num_classes = dataset_config[dataset_name]['num_classes']
     args.data_path = dataset_config[dataset_name]['data_path']
-    model_name = "LC_fusion" if "fusion" in dataset_name.lower() 
 
 
     config_vit = CONFIGS_ViT_seg[args.vit_name]
@@ -163,11 +154,9 @@ if __name__ == "__main__":
     if args.vit_name.find('R50') !=-1:
         config_vit.patches.grid = (int(args.img_size/args.vit_patches_size), int(args.img_size/args.vit_patches_size))
 
-    if model_name=='LC_fusion':
-        from networks.vit_seg_modeling_fusion import VisionTransformer as ViT_seg_fusion
-        net = ViT_seg_fusion(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
+    from networks.vit_seg_modeling_fusion import VisionTransformer as ViT_seg_fusion
+    net = ViT_seg_fusion(config_vit, img_size=args.img_size, num_classes=config_vit.n_classes).cuda()
 
-    weight_path = args.weight_path
-    net.load_state_dict(torch.load(weight_path))
+    net.load_state_dict(torch.load(args.weight_path))
 
     inference_lc_fusion(args, net)

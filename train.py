@@ -10,8 +10,6 @@ from networks.vit_seg_modeling import CONFIGS as CONFIGS_ViT_seg
 from trainer import trainer_lc_fusion
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--root_path', type=str,
-                    default='.../MM-EndoCL', help='root dir for data')
 parser.add_argument('--dataset', type=str,
                     default='LC_fusion_dataset2', help='experiment_name')
 parser.add_argument('--num_classes', type=int,
@@ -50,18 +48,9 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed(args.seed)
     dataset_name = args.dataset
-    model_name = "LC_fusion" if "fusion" in dataset_name.lower()
     dataset_config = {
-        'LC_fusion_dataset1': {
-            'data_path': './data/dataset1',
-            'num_classes': 2,
-        },
-        'LC_fusion_dataset2': {
-            'data_path': './data/dataset2',
-            'num_classes': 2,
-        },
-        'LC_fusion_dataset3': {
-            'data_path': './data/dataset3',
+        'demo_dataset': {
+            'data_path': './data/demo_dataset',
             'num_classes': 2,
         }
     }
@@ -85,6 +74,4 @@ if __name__ == "__main__":
     net.load_from(weights=np.load(config_vit.pretrained_path))
     net.load_from1(weights=np.load(config_vit.pretrained_path))
 
-    trainer = {'LC_fusion':trainer_lc_fusion}
-
-    trainer[model_name](args, net, snapshot_path)
+    trainer_lc_fusion(args, net, snapshot_path)

@@ -19,7 +19,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class LC(Dataset):
     def __init__(self, data_path, transform=None, mode='Training'):
-        df = pd.read_csv(os.path.join(data_path, mode + '_GroundTruth.csv'), encoding='gbk')
+        df = pd.read_csv(os.path.join(data_path, mode + '.csv'), encoding='gbk')
         self.name_list_b = df.iloc[:, 0].tolist()
         self.name_list_n = df.iloc[:, 1].tolist()
         self.label_list_b = df.iloc[:, 2].tolist()

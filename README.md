@@ -46,14 +46,30 @@ pip install -r requirements.txt
 ```
 ---
 
-## Train
-```bash
-python train.py
-```
+## Custom Dataset
+
+If you would like to use a custom dataset, please place your data under the `./data` directory and prepare two CSV files, `Train.csv` and `Test.csv`, to specify the file paths of the training and testing samples, respectively.  
+You may refer to the provided `demo_dataset` for an example of the expected data organization and CSV format.
+
+
+
 ---
 
-## Test
+## Training
 ```bash
-python test.py
+python train.py --epochs 100 --batch_size 24 --dataset demo_dataset
 ```
+The training dataset and corresponding class definitions should be specified in the `dataset_config` section of `train.py`.
+
+---
+
+## Inference
+```bash
+python test.py --dataset demo_dataset --batch_size 1 --weight_path xxx
+```
+The test dataset should be specified in the `dataset_config` section of `test.py`. Please also set `weight_path` to the path of the trained model weights before evaluation.
+
+We provide example pretrained weights for testing and demonstration purposes, which can be downloaded from [[Google Drive](https://drive.google.com/file/d/1Sjq0fkLqaSIVAEmewsUCR1SjVFQesPgZ/view?usp=sharing)].
+
+
 ---
